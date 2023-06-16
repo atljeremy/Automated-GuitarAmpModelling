@@ -52,6 +52,8 @@ def main(args):
         for parameters in configs:
             args.__setattr__(parameters, configs[parameters])
 
+    print("#### DEBUG: Using args: ", args)
+
     if args.model == 'SimpleRNN':
         model_name = args.model + args.device + '_' + args.unit_type + '_hs' + str(args.hidden_size) + '_pre_' + args.pre_filt
     if args.pre_filt == 'A-Weighting':
