@@ -93,7 +93,7 @@ def main(args):
     writer = SummaryWriter(os.path.join('TensorboardData', model_name))
 
     # Load dataset
-    dataset = CAMLdataset.DataSet(data_dir='Data')
+    dataset = CAMLdataset.DataSet(data_dir=args.data_location)
 
     dataset.create_subset('train', frame_len=22050)
     dataset.load_file(os.path.join('train', args.file_name), 'train')
