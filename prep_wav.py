@@ -208,6 +208,8 @@ def conditionedWavParse(args):
 
     try:
         for ds in data["Data Sets"]:
+        
+            print("#### DEBUG: Processing data set: ", ds)
 
             # Load and Preprocess Data
             in_rate, in_data = wavfile.read(ds["TrainingClean"])
