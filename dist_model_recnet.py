@@ -67,7 +67,7 @@ def main(args):
         args.pre_filt = None
 
     # Generate name of directory where results will be saved
-    save_path = os.path.join(args.save_location, args.device + '-' + args.load_config)
+    save_path = os.path.join(args.save_location, args.device + '-' + args.load_config.split("/")[-1])
 
     # Check if an existing saved model exists, and load it, otherwise creates a new model
     network = init_model(save_path, args)
