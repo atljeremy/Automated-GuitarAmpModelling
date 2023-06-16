@@ -5,17 +5,24 @@ import random
 import json
 
 def save_wav(name, data):
-    wavfile.write(name, 44100, data.flatten().astype(np.float32))
+    print("#### DEBUG: Saving wav file: ", name)
+    try:
+        wavfile.write(name, 48000, data.flatten().astype(np.float32))
+    except:
+        print("#### ERROR: Failed to save wav file: ", name)
 
 def save_wav_dont_flatten(name, data):
-    wavfile.write(name, 44100, data.astype(np.float32))
+    print("#### DEBUG: Saving wav file: ", name)
+    try:
+        wavfile.write(name, 48000, data.astype(np.float32))
+    except:
+        print("#### ERROR: Failed to save wav file: ", name)
 
 def normalize(data):
     data_max = max(data)
     data_min = min(data)
     data_norm = max(data_max,abs(data_min))
     return data / data_norm
-
 
 def sliceOnMod(input_data, target_data, mod):
     # Split the data on a modulus.
@@ -199,71 +206,77 @@ def conditionedWavParse(args):
     all_target_val = np.array([[]]) # 1 channels of all (out audio)
     all_target_test = np.array([[]]) # 1 channels of all (out audio)
 
+    try:
+        for ds in data["Data Sets"]:
 
-    for ds in data["Data Sets"]:
+            # Load and Preprocess Data
+            in_rate, in_data = wavfile.read(ds["TrainingClean"])
+            out_rate, out_data = wavfile.read(ds["TrainingTarget"])
+            
+            clean_data = in_data.astype(np.float32).flatten()
+            target_data = out_data.astype(np.float32).flatten()
 
-        # Load and Preprocess Data
-        in_rate, in_data = wavfile.read(ds["TrainingClean"])
-        out_rate, out_data = wavfile.read(ds["TrainingTarget"])
-        
-        clean_data = in_data.astype(np.float32).flatten()
-        target_data = out_data.astype(np.float32).flatten()
-
-        # If Desired Normalize the data
-        if (args.normalize):
-            clean_data = normalize(clean_data).reshape(len(clean_data),1)
-            target_data = normalize(target_data).reshape(len(target_data),1)
-            in_test = normalize(in_test).reshape(len(test_in_data),1)
-            out_test = normalize(out_test).reshape(len(test_out_data),1)
-
-        # Make the Training and validation split
-        if args.random_split:
-            in_train, out_train, in_val, out_val = sliceRandomPercentage(clean_data, target_data, args.random_split)
-        else:
-            # Split the data on a twenty percent mod
-            in_train, out_train, in_val, out_val = sliceOnMod(clean_data, target_data, args.mod_split)
-
-
-        # Process the Test Data. If it's a separate set, process that set. 
-        # If there is not a separeate set, use the validation data for testing.
-        if (seprateTestSet):
-            test_in_rate, test_in_data = wavfile.read(ds["TestClean"])
-            test_out_rate, test_out_data = wavfile.read(ds["TestTarget"])
-            in_test = test_in_data.astype(np.float32).flatten()
-            out_test = test_out_data.astype(np.float32).flatten()
-
+            # If Desired Normalize the data
             if (args.normalize):
+                clean_data = normalize(clean_data).reshape(len(clean_data),1)
+                target_data = normalize(target_data).reshape(len(target_data),1)
                 in_test = normalize(in_test).reshape(len(test_in_data),1)
                 out_test = normalize(out_test).reshape(len(test_out_data),1)
-        else:
-            in_test = in_val
-            out_test = out_val
 
-        # Initialize lists to handle the number of parameters
-        params_train = []
-        params_val = []
-        params_test = []
+            # Make the Training and validation split
+            if args.random_split:
+                in_train, out_train, in_val, out_val = sliceRandomPercentage(clean_data, target_data, args.random_split)
+            else:
+                # Split the data on a twenty percent mod
+                in_train, out_train, in_val, out_val = sliceOnMod(clean_data, target_data, args.mod_split)
 
-        # Create a list of np arrays of the parameter values
-        for val in ds["Parameters"]:
-            # Create the parameter arrays
-            params_train.append(np.array([val]*len(in_train)))
-            params_val.append(np.array([val]*len(in_val)))
-            params_test.append(np.array([val]*len(in_test)))
 
-        # Convert the lists to numpy arrays
-        params_train = np.array(params_train)
-        params_val = np.array(params_val)
-        params_test = np.array(params_test)
+            # Process the Test Data. If it's a separate set, process that set.
+            # If there is not a separeate set, use the validation data for testing.
+            if (seprateTestSet):
+                test_in_rate, test_in_data = wavfile.read(ds["TestClean"])
+                test_out_rate, test_out_data = wavfile.read(ds["TestTarget"])
+                in_test = test_in_data.astype(np.float32).flatten()
+                out_test = test_out_data.astype(np.float32).flatten()
 
-        # Append the audio and paramters to the full data sets 
-        all_clean_train = np.append(all_clean_train, np.append([in_train],params_train, axis=0), axis = 1)
-        all_clean_val = np.append(all_clean_val , np.append([in_val],params_val, axis=0), axis = 1)
-        all_clean_test = np.append(all_clean_test , np.append([in_test],params_test, axis=0), axis = 1)
+                if (args.normalize):
+                    in_test = normalize(in_test).reshape(len(test_in_data),1)
+                    out_test = normalize(out_test).reshape(len(test_out_data),1)
+            else:
+                in_test = in_val
+                out_test = out_val
 
-        all_target_train = np.append(all_target_train, out_train)
-        all_target_val = np.append(all_target_val, out_val)
-        all_target_test = np.append(all_target_test, out_test)
+            # Initialize lists to handle the number of parameters
+            params_train = []
+            params_val = []
+            params_test = []
+
+            # Create a list of np arrays of the parameter values
+            for val in ds["Parameters"]:
+                # Create the parameter arrays
+                params_train.append(np.array([val]*len(in_train)))
+                params_val.append(np.array([val]*len(in_val)))
+                params_test.append(np.array([val]*len(in_test)))
+
+            # Convert the lists to numpy arrays
+            params_train = np.array(params_train)
+            params_val = np.array(params_val)
+            params_test = np.array(params_test)
+
+            # Append the audio and paramters to the full data sets
+            all_clean_train = np.append(all_clean_train, np.append([in_train],params_train, axis=0), axis = 1)
+            all_clean_val = np.append(all_clean_val , np.append([in_val],params_val, axis=0), axis = 1)
+            all_clean_test = np.append(all_clean_test , np.append([in_test],params_test, axis=0), axis = 1)
+
+            all_target_train = np.append(all_target_train, out_train)
+            all_target_val = np.append(all_target_val, out_val)
+            all_target_test = np.append(all_target_test, out_test)
+    except MemoryError:
+        print("#### ERROR: conditionedWavParse failed due to a memory error.")
+    except:
+        print("#### ERROR: conditionedWavParse failed.")
+    finally:
+        print("#### DEBUG: conditionedWavParse has completed.")
 
     # Save the wav files 
     save_wav_dont_flatten(args.path + "/train/" + args.name + "-input.wav", all_clean_train.T)
